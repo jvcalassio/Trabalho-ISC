@@ -1,1 +1,4 @@
 TAMANHO DOS SPRITES DOS BONECOS : 15X15
+Mapa CP: Mapa com pontos
+Mapa SP: Mapa sem pontos
+Tirei os arquivos .mif, acho que são desnecessários. Mas ainda tenho aqui, em outra pasta, qualquer coisa upo ai no repositório
