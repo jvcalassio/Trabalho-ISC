@@ -136,6 +136,7 @@ DYN_MENU: # parte dinamica do menu
 # MAIN_LOOP: faz a chamada das funcoes que geram as partes dinamicas da tela
 #----------------------------------------------
 BACKGROUND:  #background do jogo
+	li s6,0
 	la a0,FUNDO # carrega o arquivo para o a0, onde vai ser chamado pelo syscall
 	li a1,0
 	li a2,0
@@ -363,7 +364,7 @@ MOV_ESQUERDA:
 	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
 	
-	li t0,10
+	li t0,13
 	ble s4,t0,STOP_PACMAN
 	jal BLACK_BLOCK # Muda o local atual para preto
 	
@@ -372,8 +373,12 @@ MOV_ESQUERDA:
 	
 	# Realiza o movimento para a esquerda
 	li t0,1
-	beq s7,zero,ABRE_BOCA_ESQUERDA
-	beq s7,t0,FECHA_BOCA_ESQUERDA
+	li t1,2
+	li t2,3
+	beq s7,zero,ABRE_BOCA_ESQUERDA_1
+	beq s7,t0,ABRE_BOCA_ESQUERDA_2
+	beq s7,t1,FECHA_BOCA_ESQUERDA_2
+	beq s7,t2,FECHA_BOCA_ESQUERDA_1
 	VOLTA_MOV_ESQUERDA:
 	li a1,0
 	li a7,1024
@@ -399,13 +404,21 @@ MOV_ESQUERDA:
 	
 	j MAIN_LOOP
 
-ABRE_BOCA_ESQUERDA:
-	la a0,PACMAN_LEFT_OPEN
+ABRE_BOCA_ESQUERDA_1:
+	la a0,PACMAN_LEFT
 	li s7,1
 	j VOLTA_MOV_ESQUERDA
+ABRE_BOCA_ESQUERDA_2:
+	la a0,PACMAN_LEFT_OPEN
+	li s7,3
+	j VOLTA_MOV_ESQUERDA
 
-FECHA_BOCA_ESQUERDA:
+FECHA_BOCA_ESQUERDA_1:
 	la a0,PACMAN_LEFT
+	li s7,2
+	j VOLTA_MOV_ESQUERDA
+FECHA_BOCA_ESQUERDA_2:
+	la a0,PACMAN_LEFT_CLOSED
 	li s7,0
 	j VOLTA_MOV_ESQUERDA
 # Movimenta o pac man para a direita
@@ -426,8 +439,12 @@ MOV_DIREITA:
 	
 	# Realiza o movimento para a direita
 	li t0,1
-	beq s7,zero,ABRE_BOCA_DIREITA
-	beq s7,t0,FECHA_BOCA_DIREITA
+	li t1,2
+	li t2,3
+	beq s7,zero,ABRE_BOCA_DIREITA_1
+	beq s7,t0,ABRE_BOCA_DIREITA_2
+	beq s7,t1,FECHA_BOCA_DIREITA_2
+	beq s7,t2,FECHA_BOCA_DIREITA_1
 	VOLTA_MOV_DIREITA:
 	li a1,0
 	li a7,1024
@@ -445,25 +462,33 @@ MOV_DIREITA:
 	
 	lw a0,tempX
 	lw a1,tempY
-	addi a0,a0,+2
+	addi a0,a0,+8
 	jal CALC_POS # retorna a posicao do endereco, em a2
 	
 	jal SPAWN2
-	addi s4,s4,+2
+	addi s4,s4,+8
 	
 	j MAIN_LOOP
 
-ABRE_BOCA_DIREITA:
-	la a0,PACMAN_RIGHT_OPEN
+ABRE_BOCA_DIREITA_1:
+	la a0,PACMAN_RIGHT
 	li s7,1
 	j VOLTA_MOV_DIREITA
+ABRE_BOCA_DIREITA_2:
+	la a0,PACMAN_RIGHT_OPEN
+	li s7,3
+	j VOLTA_MOV_DIREITA
 
-FECHA_BOCA_DIREITA:
+FECHA_BOCA_DIREITA_1:
 	la a0,PACMAN_RIGHT
+	li s7,2
+	j VOLTA_MOV_DIREITA
+FECHA_BOCA_DIREITA_2:
+	la a0,PACMAN_RIGHT_CLOSED
 	li s7,0
 	j VOLTA_MOV_DIREITA
 	
-
+# Para o movimento do pac man
 STOP_PACMAN:
 	li s6,0
 	j CHECK_MOV
