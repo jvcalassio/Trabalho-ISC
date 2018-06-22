@@ -3,14 +3,19 @@
 # s0 = nivel
 # s1 = qtd vidas
 # s2 = score
-# s3 = high score
+# s3 = highscore
 # s4 = pos x do boneco
+# s5 = pos y do boneco
 
 .data
 # recursos externos
-FUNDO: .string "sprites/map_sp.bin"
-BONECO: .string "sprites/b_med_open.bin"
-BONECO_SP: .space 225
+FUNDO: .string "sprites/map_cp.bin"
+PACMAN: .string "sprites/b_med_open.bin" #pac man base, com a boca meio aberta
+INKY: .string "sprites/blu_1.bin" # fantasma azul base, inky
+PINKY: .string "sprites/pink_1.bin" # fantasma rosa base, pinky
+SUE: .string "sprites/orang_1.bin" # fantasma laranja, sue
+BLINKY: .string "sprites/red_1.bin" # fantasma vermelho, blinky
+SPRITE_SP: .space 225
 
 #strings do jogo
 titulo: .string "MS PACMAN"
@@ -18,6 +23,7 @@ highscore: .string "HIGH SCORE"
 estrelando: .string "ESTRELANDO"
 up: .string "UP"
 pbotao: .string "PRESSIONE QUALQUER BOTAO PARA JOGAR"
+score: .string "SCORE"
 
 .text
 	# seta o exception handler
@@ -31,9 +37,9 @@ pbotao: .string "PRESSIONE QUALQUER BOTAO PARA JOGAR"
 RESET:
 	add t6, zero,zero # seta t6 = 0 (tecla pressionada)
 	addi s0, zero, 1 # seta s0 = 1 (mapa atual, no caso, o primeiro mapa)
-	addi s1, zero, 3 # seta s1 = 0 (qtd de vidas)
-	addi s4, zero, 100 # seta s4 = 110 (posicao x inicial do pac man)
-	addi s5, zero, 180 # seta s5 = 180 (posicao y inicial do pac man)
+	addi s1, zero, 3 # seta s1 = 3 (qtd de vidas)
+	addi s4, zero, 103 # seta s4 = 103 (posicao x inicial do pac man)
+	addi s5, zero, 175 # seta s5 = 175 (posicao y inicial do pac man)
 #----------------------------------------------
 # Menu principal do jogo
 # Qualquer tecla inicia
@@ -107,6 +113,8 @@ DYN_MENU: # parte dinamica do menu
 	
 #----------------------------------------------
 # Execucao do jogo
+# BACKGROUND: gera o bg e chama a geracao das partes estaticas/iniciais da tela
+# MAIN_LOOP: faz a chamada das funcoes que geram as partes dinamicas da tela
 #----------------------------------------------
 BACKGROUND:  #background do jogo
 	la a0,FUNDO # carrega o arquivo para o a0, onde vai ser chamado pelo syscall
@@ -122,44 +130,193 @@ BACKGROUND:  #background do jogo
 	
 	li a7,57 # syscall de close file
 	ecall
-	jal SPAWN
+	jal SPAWN_OBJECTS
+	j FIM
+	# j MAIN_LOOP # colocar nesse loop as chamadas para as funcoes principais
+
 	
-	
-SPAWN: # spawna o pac man pela primeira vez
-	la a0,BONECO 
+# Spawna os objetos pela primeira vez
+SPAWN_OBJECTS:
+	#---------------
+	# Gera o Pac Man
+	#---------------
+	la a0,PACMAN 
 	li a1,0
 	li a7,1024
 	ecall # carrega o pac man em a0 (open)
 	
-	mv t0,a0
-	la a1,BONECO_SP
+	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
-	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	jal SPAWN2 # chama a funcao para gerar o pac man corretamente
-	jr ra,0 # retorna
+	mv t0,a0
+	mv a0,s4 # copia a pos x do boneco para a0
+	mv a1,s5 # copia a pos y do boneco para a1
+	jal CALC_POS # calcula a posicao do endereco e retorna em a2
 	
+	mv a0,t0
+	jal SPAWN2 # chama a funcao para gerar o pac man corretamente
+	
+	#---------------------------
+	# Gera o fantasma azul, INKY
+	#---------------------------
+	la a0,INKY 
+	li a1,0
+	li a7,1024
+	ecall # carrega o fantasma em a0 (open)
+	
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # usa a0 para abrir a img 
+	
+	li a7,57
+	ecall # fecha o arquivo
+	
+	mv t0,a0
+	li a0,87 # copia a pos x do boneco para a0
+	li a1,107 # copia a pos y do boneco para a1
+	jal CALC_POS # calcula a posicao do endereco e retorna em a2
+	
+	mv a0,t0
+	jal SPAWN2 # chama a funcao para gerar o fantasma corretamente
+	
+	#----------------------------
+	# Gera o fantasma rosa, PINKY
+	#----------------------------
+	la a0,PINKY 
+	li a1,0
+	li a7,1024
+	ecall # carrega o fantasma em a0 (open)
+	
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # usa a0 para abrir a img 
+	
+	li a7,57
+	ecall # fecha o arquivo
+	
+	mv t0,a0
+	li a0,103 # copia a pos x do boneco para a0
+	li a1,107 # copia a pos y do boneco para a1
+	jal CALC_POS # calcula a posicao do endereco e retorna em a2
+	
+	mv a0,t0
+	jal SPAWN2 # chama a funcao para gerar o fantasma corretamente
+	
+	#-----------------------------
+	# Gera o fantasma laranja, SUE
+	#-----------------------------
+	la a0,SUE
+	li a1,0
+	li a7,1024
+	ecall # carrega o fantasma em a0 (open)
+	
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # usa a0 para abrir a img 
+	
+	li a7,57
+	ecall # fecha o arquivo
+	
+	mv t0,a0
+	li a0,118 # copia a pos x do boneco para a0
+	li a1,107 # copia a pos y do boneco para a1
+	jal CALC_POS # calcula a posicao do endereco e retorna em a2
+	
+	mv a0,t0
+	jal SPAWN2 # chama a funcao para gerar o fantasma corretamente
+	
+	#----------------------------
+	# Gera o fantasma red, BLINKY
+	#----------------------------
+	la a0,BLINKY
+	li a1,0
+	li a7,1024
+	ecall # carrega o fantasma em a0 (open)
+	
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # usa a0 para abrir a img 
+	
+	li a7,57
+	ecall # fecha o arquivo
+	
+	mv t0,a0
+	li a0,103 # copia a pos x do boneco para a0
+	li a1,85 # copia a pos y do boneco para a1
+	jal CALC_POS # calcula a posicao do endereco e retorna em a2
+	
+	mv a0,t0
+	jal SPAWN2 # chama a funcao para gerar o fantasma corretamente
+	
+	#----------------------------
+	# Gera os textos à esquerda, de score, high score, vidas
+	#---------------------------
+	# Numero de vidas
+	mv a0,s1 # coloca a qtd de vidas em a0
+	li a1,230 # x a ser impresso
+	li a2,13 # y a ser impresso
+	li a3,0x00ff # cor de fundo e letra
+	li a7,101
+	ecall
+	# Texto de vidas
+	la a0,up
+	li a1,240
+	li a2,13
+	li a3,0x00ff
+	li a7,104
+	ecall
+	# Numero do score
+	mv a0,s2
+	li a1,230
+	li a2,30
+	li a7,101
+	ecall
+	# Texto do score
+	la a0,score
+	li a2,39
+	li a7,104
+	ecall
+	# Numero do highscore
+	mv a0,s3
+	li a2,52
+	li a7,101
+	ecall
+	# Texto do highscore
+	la a0,highscore
+	li a2,61
+	li a7,104
+	ecall
+	
+	li t0,0x00400144 # endereco da continuacao, em BACKGROUND
+	jr t0 # volta para a execucao de BACKGROUND
+
 #----------------------------------------------
-# Funcao que gera objetos no mapa
-# To-do-List:
-#   Adaptar para servir para qualquer objeto, bastando setar a posicao anteriormente e qual o sprite a ser utilizado
-# Por enquanto, só funciona com o primeiro pac man
+# Gera objetos no mapa
+# Funciona com qualquer objeto
+# Usar CALC_POS para gerar qual a posicao a ser desenhada
+# Carregue a imagem com o open em a0, e de o read em SPRITE_SP
+# a0 = Imagem carregada pelo Open
+# a2 = resultado do CALC_POS
 #----------------------------------------------
 SPAWN2:
 	li t0,15 # altura do objeto
-	li t1,15 # largura do objeto
-	li a1,0xff000000 # endereco inicial para desenhar o obj
-	la a2,BONECO_SP # espaco
+	li t1,14 # largura do objeto
+	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
+	la a2,SPRITE_SP # muda a2 para o vet 225
 	SPAWN2_LOOP: beqz t0,SPAWN2_LOOP2 # caso t0 seja 0, pula para a prox linha
 		lb t3,0(a2) # caso contrario, decrementa t0 e repete, até terminar os 15px horizontais da imagem.
 		sb t3,0(a1)
 		addi t0,t0,-1 # decrementa t0
-		addi a2,a2,1 # aumenta a2 (tamanho do espaço BONECO_SP)
+		addi a2,a2,1 # aumenta a2 (tamanho do espaço vet)
 		addi a1,a1,1 # aumenta a1 (endereco a ser desenhado)
 		j SPAWN2_LOOP
 		
@@ -171,13 +328,6 @@ SPAWN2:
 			
 			FIM_SPAWN2:
 				jr ra,0 # retorna
-				
-#----------------------------------------------
-# Finaliza a execucao
-#----------------------------------------------
-FIM:
-	li a7,10 # syscall de exit
-	ecall
 
 #----------------------------------------------
 # Bind do teclado. Salva a tecla em t6
@@ -191,6 +341,25 @@ TECLADO:
 RETORNA: jr ra,0	
 
 CALC_POS: # calcula as posicoes, de px para o endereco desejado
-	# a ser implementado
+	# ARGUMENTOS:
+	# a0 = pos x desejada, em px
+	# a1 = pos y desejada, em px
+	# a2 = resultado
+	# 0xff000000 é sempre o endereco base
+	li t0,320
+	li t1,240
+	addi a0,a0,-1 # a0--; porque a faixa do x é de 0 a 319
+	addi a1,a1,-1 # a1--; porque a faixa do y é de 0 a 239
+	mul t0,t0,a1 # a3 = y * 320
+	add a2,t0,a0 # a3 = (y * 320) + x
+	li t0,0xff000000
+	add a2,a2,t0 # a3 = end. base + (y*320) + x
+	jr ra,0
 
+#----------------------------------------------
+# Finaliza a execucao
+#----------------------------------------------
+FIM:
+	li a7,10 # syscall de exit
+	ecall
 .include "assets/SYSTEMv11.s"
