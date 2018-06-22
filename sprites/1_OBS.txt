@@ -1,4 +1,38 @@
-TAMANHO DOS SPRITES DOS BONECOS : 15X15
+TAMANHO DOS SPRITES DOS BONECOS : 15x15
 Map CP: Mapa com pontos
 Map SP: Mapa sem pontos
 Tirei os arquivos .mif, acho que são desnecessários. Mas ainda tenho aqui, em outra pasta, qualquer coisa upo ai no repositório
+
+Registradores principais:
+s0 = nivel
+s1 = qtd vidas
+s2 = score
+s3 = highscore
+s4 = pos x do boneco
+s5 = pos y do boneco
+s6 = tecla pressionada
+
+Salvar as posicoes X e Y dos inimigos na memoria, preferencialmente (a ser implementado)
+
+---------------------------------
+Informações úteis:
+	syscalls
+		a0 = valor
+		a1 = x
+		a2 = y
+		a3 = cor
+		Print Int
+			cod = 101
+		Print String
+			cod = 104
+		Print Char
+			cod = 111
+		CLS
+			cod = 148
+
+Cores do mapa:
+0xF7F7
+0xAF05
+0xF7AF
+0x0500
+0xA704
