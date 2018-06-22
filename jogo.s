@@ -1,21 +1,31 @@
 #OBS:
-# t6 = tecla pressionada
 # s0 = nivel
 # s1 = qtd vidas
 # s2 = score
 # s3 = highscore
 # s4 = pos x do boneco
 # s5 = pos y do boneco
+# s6 = tecla pressionada
+# s7 = status da boca (0 = fechado; 1 = meio (abrindo); 2 = meio (fechando); 3 = aberto)
 
 .data
 # recursos externos
 FUNDO: .string "sprites/map_cp.bin"
-PACMAN: .string "sprites/b_med_open.bin" #pac man base, com a boca meio aberta
+PACMAN_RIGHT: .string "sprites/b_med_open_right.bin" #pac man base, com a boca meio aberta
+PACMAN_RIGHT_OPEN: .string "sprites/b_full_open_right.bin" # pac man com a boca aberta
+PACMAN_RIGHT_CLOSED: .string "sprites/b_closed_right.bin"
+PACMAN_LEFT: .string "sprites/b_med_open_left.bin"
+PACMAN_LEFT_OPEN: .string "sprites/b_full_open_left.bin"
+PACMAN_LEFT_CLOSED: .string "sprites/b_closed_left.bin"
 INKY: .string "sprites/blu_1.bin" # fantasma azul base, inky
 PINKY: .string "sprites/pink_1.bin" # fantasma rosa base, pinky
 SUE: .string "sprites/orang_1.bin" # fantasma laranja, sue
 BLINKY: .string "sprites/red_1.bin" # fantasma vermelho, blinky
+BANANA: .string "sprites/banana.bin"
+
+BLACK: .string "sprites/black.bin" # tela preta, 15x15
 SPRITE_SP: .space 225
+SPRITE_SP1: .space 225
 
 #strings do jogo
 titulo: .string "MS PACMAN"
@@ -24,6 +34,15 @@ estrelando: .string "ESTRELANDO"
 up: .string "UP"
 pbotao: .string "PRESSIONE QUALQUER BOTAO PARA JOGAR"
 score: .string "SCORE"
+
+tempX: .word 0
+tempY: .word 0
+tempObj: .word 0
+
+tempRet0: .word 0
+tempRet1: .word 0
+tempRet2: .word 0
+tempRet3: .word 0
 
 .text
 	# seta o exception handler
@@ -35,7 +54,7 @@ score: .string "SCORE"
 # Seta os valores iniciais. Utilizar caso dê game over
 #----------------------------------------------
 RESET:
-	add t6, zero,zero # seta t6 = 0 (tecla pressionada)
+	add s6, zero,zero # seta s6 = 0 (tecla pressionada)
 	addi s0, zero, 1 # seta s0 = 1 (mapa atual, no caso, o primeiro mapa)
 	addi s1, zero, 3 # seta s1 = 3 (qtd de vidas)
 	addi s4, zero, 103 # seta s4 = 103 (posicao x inicial do pac man)
@@ -108,7 +127,7 @@ STATIC_MENU: # parte estatica do menu
 	
 DYN_MENU: # parte dinamica do menu
 	jal TECLADO	# checa se o user apertou algum botao
-	bne t6,zero,BACKGROUND # se t6 for diferente de zero, executa o jogo, caso contrario, continua no loop
+	bne s6,zero,BACKGROUND # se s6 for diferente de zero, executa o jogo, caso contrario, continua no loop
 	j DYN_MENU # cria o loop para sempre esperar alguma tecla ser pressionada
 	
 #----------------------------------------------
@@ -123,37 +142,42 @@ BACKGROUND:  #background do jogo
 	li a7,1024 # syscall de open file
 	ecall
 	
+	mv t0,a0
 	li a1,0xff000000 # indica o endereço da VGA a ser carregada a imagem de fundo
 	li a2,76800 # tamanho do arquivo,em bytes
 	li a7,63 # syscall de Read File
 	ecall
 	
+	mv a0,t0
 	li a7,57 # syscall de close file
 	ecall
 	jal SPAWN_OBJECTS
+	j MAIN_LOOP # colocar nesse loop as chamadas para as funcoes principais
 	j FIM
-	# j MAIN_LOOP # colocar nesse loop as chamadas para as funcoes principais
 
 	
 # Spawna os objetos pela primeira vez
 SPAWN_OBJECTS:
+	la t0,tempRet0 # salva o return adress original (porque essa funcao chama outras, mudando o RA)
+	sw ra,0(t0) # Salva o endereco da funcao que o chamou originalmente
 	#---------------
 	# Gera o Pac Man
 	#---------------
-	la a0,PACMAN 
+	la a0,PACMAN_RIGHT
 	li a1,0
 	li a7,1024
 	ecall # carrega o pac man em a0 (open)
 	
+	mv t0,a0
 	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
+	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	mv t0,a0
 	mv a0,s4 # copia a pos x do boneco para a0
 	mv a1,s5 # copia a pos y do boneco para a1
 	jal CALC_POS # calcula a posicao do endereco e retorna em a2
@@ -169,15 +193,16 @@ SPAWN_OBJECTS:
 	li a7,1024
 	ecall # carrega o fantasma em a0 (open)
 	
+	mv t0,a0
 	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
+	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	mv t0,a0
 	li a0,87 # copia a pos x do boneco para a0
 	li a1,107 # copia a pos y do boneco para a1
 	jal CALC_POS # calcula a posicao do endereco e retorna em a2
@@ -193,15 +218,16 @@ SPAWN_OBJECTS:
 	li a7,1024
 	ecall # carrega o fantasma em a0 (open)
 	
+	mv t0,a0
 	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
+	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	mv t0,a0
 	li a0,103 # copia a pos x do boneco para a0
 	li a1,107 # copia a pos y do boneco para a1
 	jal CALC_POS # calcula a posicao do endereco e retorna em a2
@@ -217,15 +243,16 @@ SPAWN_OBJECTS:
 	li a7,1024
 	ecall # carrega o fantasma em a0 (open)
 	
+	mv t0,a0
 	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
+	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	mv t0,a0
 	li a0,118 # copia a pos x do boneco para a0
 	li a1,107 # copia a pos y do boneco para a1
 	jal CALC_POS # calcula a posicao do endereco e retorna em a2
@@ -241,15 +268,16 @@ SPAWN_OBJECTS:
 	li a7,1024
 	ecall # carrega o fantasma em a0 (open)
 	
+	mv t0,a0
 	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # usa a0 para abrir a img 
 	
+	mv a0,t0
 	li a7,57
 	ecall # fecha o arquivo
 	
-	mv t0,a0
 	li a0,103 # copia a pos x do boneco para a0
 	li a1,85 # copia a pos y do boneco para a1
 	jal CALC_POS # calcula a posicao do endereco e retorna em a2
@@ -296,17 +324,192 @@ SPAWN_OBJECTS:
 	li a7,104
 	ecall
 	
-	li t0,0x00400144 # endereco da continuacao, em BACKGROUND
-	jr t0 # volta para a execucao de BACKGROUND
+	lw t0,tempRet0 # Carrega o endereço original da memoria
+	jr t0,0 # volta para a execucao de BACKGROUND
+	
+#------------------------------------------------------------------------
+# Loop principal do jogo
+# Colocar aqui todas as funções de repetição para o funcionamento do jogo
+#-------------------------------------------------------------------------
+MAIN_LOOP:
+	j CHECK_MOV
+	j MAIN_LOOP
 
-#----------------------------------------------
+# Verifica se há tecla pressionada, e move o pac man
+CHECK_MOV:
+	#la t0,tempRet1 # Salva o endereco da funcao que o chamou originalmente
+	#sw ra,0(t0)
+	
+	jal TECLADO
+	li t1,97 # A - seta pra esquerda
+	li t2,100 # D - seta pra direita
+	
+	li a0,35 # Sleep, pro jogo nao correr
+	li a7,32
+	ecall
+	
+	mv a1,s4
+	mv a2,s5
+	beq s6,t2,MOV_DIREITA
+	beq s6,t1,MOV_ESQUERDA
+	j MAIN_LOOP
+	
+# Movimenta o pac man para a esquerda
+# Parametros:
+# a1 = posicao x atual
+# a2 = posicao y atual
+# A implementar: mover qualquer objeto
+MOV_ESQUERDA:
+	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
+	#sw ra,0(t0)
+	
+	li t0,10
+	ble s4,t0,STOP_PACMAN
+	jal BLACK_BLOCK # Muda o local atual para preto
+	
+	la t0,tempObj
+	sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
+	
+	# Realiza o movimento para a esquerda
+	li t0,1
+	beq s7,zero,ABRE_BOCA_ESQUERDA
+	beq s7,t0,FECHA_BOCA_ESQUERDA
+	VOLTA_MOV_ESQUERDA:
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0 # copia o file descriptor para t0 (pois o ecall 63 muda a0)
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0 # devolve o FD para fechar o arquivo
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	addi a0,a0,-8
+	jal CALC_POS # retorna a posicao do endereco, em a2
+	
+	jal SPAWN2
+	addi s4,s4,-8
+	
+	j MAIN_LOOP
+
+ABRE_BOCA_ESQUERDA:
+	la a0,PACMAN_LEFT_OPEN
+	li s7,1
+	j VOLTA_MOV_ESQUERDA
+
+FECHA_BOCA_ESQUERDA:
+	la a0,PACMAN_LEFT
+	li s7,0
+	j VOLTA_MOV_ESQUERDA
+# Movimenta o pac man para a direita
+# Parametros:
+# a1 = posicao x atual
+# a2 = posicao y atual
+# A implementar: mover qualquer objeto
+MOV_DIREITA:
+	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
+	#sw ra,0(t0)
+	
+	li t0,196
+	bge s4,t0,STOP_PACMAN
+	jal BLACK_BLOCK # Muda o local atual para preto
+	
+	#la t0,tempObj
+	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
+	
+	# Realiza o movimento para a direita
+	li t0,1
+	beq s7,zero,ABRE_BOCA_DIREITA
+	beq s7,t0,FECHA_BOCA_DIREITA
+	VOLTA_MOV_DIREITA:
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0 # copia o file descriptor para t0 (pois o ecall 63 muda a0)
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0 # devolve o FD
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	addi a0,a0,+2
+	jal CALC_POS # retorna a posicao do endereco, em a2
+	
+	jal SPAWN2
+	addi s4,s4,+2
+	
+	j MAIN_LOOP
+
+ABRE_BOCA_DIREITA:
+	la a0,PACMAN_RIGHT_OPEN
+	li s7,1
+	j VOLTA_MOV_DIREITA
+
+FECHA_BOCA_DIREITA:
+	la a0,PACMAN_RIGHT
+	li s7,0
+	j VOLTA_MOV_DIREITA
+	
+
+STOP_PACMAN:
+	li s6,0
+	j CHECK_MOV
+	
+BLACK_BLOCK: # Deixa o local preto
+	la t0,tempRet3 # Salva o endereco da funcao que o chamou originalmente
+	sw ra,0(t0)
+	
+	la t1,tempX
+	sw a1,0(t1) # salva o x recebido na memoria
+	la t1,tempY
+	sw a2,0(t1) # salva o y recebido na memoria
+	
+	la a0,BLACK
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0
+	la a1,SPRITE_SP1
+	li a2,225
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	jal CALC_POS
+	
+	la a0,BLACK
+	jal SPAWN1
+	
+	lw t0,tempRet3 # Carrega o endereço original da memoria
+	jr t0,0 # Retorna para a funcao que o chamou originalmente
+	
+#--------------------------------------------------------------
 # Gera objetos no mapa
 # Funciona com qualquer objeto
 # Usar CALC_POS para gerar qual a posicao a ser desenhada
 # Carregue a imagem com o open em a0, e de o read em SPRITE_SP
 # a0 = Imagem carregada pelo Open
 # a2 = resultado do CALC_POS
-#----------------------------------------------
+#--------------------------------------------------------------
 SPAWN2:
 	li t0,15 # altura do objeto
 	li t1,14 # largura do objeto
@@ -329,14 +532,37 @@ SPAWN2:
 			FIM_SPAWN2:
 				jr ra,0 # retorna
 
+# Spawn auxiliar. Mesmos parametros, a unica diferenca é que usa o segundo sprite			
+SPAWN1:
+	li t0,15 # altura do objeto
+	li t1,14 # largura do objeto
+	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
+	la a2,SPRITE_SP1 # muda a2 para o vet 225
+	SPAWN1_LOOP: beqz t0,SPAWN1_LOOP2 # caso t0 seja 0, pula para a prox linha
+		lb t3,0(a2) # caso contrario, decrementa t0 e repete, até terminar os 15px horizontais da imagem.
+		sb t3,0(a1)
+		addi t0,t0,-1 # decrementa t0
+		addi a2,a2,1 # aumenta a2 (tamanho do espaço vet)
+		addi a1,a1,1 # aumenta a1 (endereco a ser desenhado)
+		j SPAWN1_LOOP
+		
+ 		SPAWN1_LOOP2:beqz t1,FIM_SPAWN1 # caso esteja na ultima linha, para a execucao do loop
+			addi t1,t1,-1 # caso contrario, pula uma linha e dá o espacamento necessario até chegar na posicao necessaria
+			addi a1,a1,305
+			addi t0,t0,15
+			j SPAWN1_LOOP # volta para o primeiro loop, para desenhar a proxima linha
+			
+			FIM_SPAWN1:
+				jr ra,0 # retorna
+				
 #----------------------------------------------
-# Bind do teclado. Salva a tecla em t6
+# Bind do teclado. Salva a tecla em s6
 #----------------------------------------------
 TECLADO:
 	li t2,0xff200000 # endereco do MIMO
 	lw t3,0(t2) # coloca a tecla em t3
 	beq t3,zero,RETORNA # se nao houver tecla pressionada, volta
-	lw t6,4(t2) # le a tecla pressionada em t6
+	lw s6,4(t2) # le a tecla pressionada em s6
 # Retorna para o antigo PC
 RETORNA: jr ra,0	
 
