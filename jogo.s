@@ -11,12 +11,20 @@
 .data
 # recursos externos
 FUNDO: .string "sprites/map_cp.bin"
+
 PACMAN_RIGHT: .string "sprites/b_med_open_right.bin" #pac man base, com a boca meio aberta
-PACMAN_RIGHT_OPEN: .string "sprites/b_full_open_right.bin" # pac man com a boca aberta
+PACMAN_RIGHT_OPEN: .string "sprites/b_full_open_right.bin"
 PACMAN_RIGHT_CLOSED: .string "sprites/b_closed_right.bin"
 PACMAN_LEFT: .string "sprites/b_med_open_left.bin"
 PACMAN_LEFT_OPEN: .string "sprites/b_full_open_left.bin"
 PACMAN_LEFT_CLOSED: .string "sprites/b_closed_left.bin"
+PACMAN_UP: .string "sprites/b_med_open_up.bin"
+PACMAN_UP_OPEN: .string "sprites/b_full_open_up.bin"
+PACMAN_UP_CLOSED: .string "sprites/b_closed_up.bin"
+PACMAN_DOWN: .string "sprites/b_med_open_down.bin"
+PACMAN_DOWN_OPEN: .string "sprites/b_full_open_down.bin"
+PACMAN_DOWN_CLOSED: .string "sprites/b_closed_down.bin"
+
 INKY: .string "sprites/blu_1.bin" # fantasma azul base, inky
 PINKY: .string "sprites/pink_1.bin" # fantasma rosa base, pinky
 SUE: .string "sprites/orang_1.bin" # fantasma laranja, sue
@@ -25,7 +33,6 @@ BANANA: .string "sprites/banana.bin"
 
 BLACK: .string "sprites/black.bin" # tela preta, 15x15
 SPRITE_SP: .space 225
-SPRITE_SP1: .space 225
 
 #strings do jogo
 titulo: .string "MS PACMAN"
@@ -344,6 +351,8 @@ CHECK_MOV:
 	jal TECLADO
 	li t1,97 # A - seta pra esquerda
 	li t2,100 # D - seta pra direita
+	li t3,119 # W - seta pra cima
+	li t4,115 # S - seta pra baixo
 	
 	li a0,35 # Sleep, pro jogo nao correr
 	li a7,32
@@ -351,6 +360,8 @@ CHECK_MOV:
 	
 	mv a1,s4
 	mv a2,s5
+	beq s6,t4,MOV_BAIXO
+	beq s6,t3,MOV_CIMA
 	beq s6,t2,MOV_DIREITA
 	beq s6,t1,MOV_ESQUERDA
 	j MAIN_LOOP
@@ -364,7 +375,7 @@ MOV_ESQUERDA:
 	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
 	
-	li t0,13
+	li t0,13 # limite de colisao do ponto de referencia
 	ble s4,t0,STOP_PACMAN
 	jal BLACK_BLOCK # Muda o local atual para preto
 	
@@ -421,6 +432,7 @@ FECHA_BOCA_ESQUERDA_2:
 	la a0,PACMAN_LEFT_CLOSED
 	li s7,0
 	j VOLTA_MOV_ESQUERDA
+	
 # Movimenta o pac man para a direita
 # Parametros:
 # a1 = posicao x atual
@@ -430,7 +442,7 @@ MOV_DIREITA:
 	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
 	
-	li t0,196
+	li t0,196 # limite de colisao do ponto de referencia
 	bge s4,t0,STOP_PACMAN
 	jal BLACK_BLOCK # Muda o local atual para preto
 	
@@ -488,6 +500,140 @@ FECHA_BOCA_DIREITA_2:
 	li s7,0
 	j VOLTA_MOV_DIREITA
 	
+# Movimenta o pac man para cima
+# Parametros:
+# a1 = posicao x atual
+# a2 = posicao y atual
+# A implementar: mover qualquer objeto
+MOV_CIMA:
+	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
+	#sw ra,0(t0)
+	
+	li t0,13 # limite de colisao do ponto de referencia
+	bge t0,s5,STOP_PACMAN
+	jal BLACK_BLOCK # Muda o local atual para preto
+	
+	#la t0,tempObj
+	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
+	
+	# Realiza o movimento para a direita
+	li t0,1
+	li t1,2
+	li t2,3
+	beq s7,zero,ABRE_BOCA_CIMA_1
+	beq s7,t0,ABRE_BOCA_CIMA_2
+	beq s7,t1,FECHA_BOCA_CIMA_2
+	beq s7,t2,FECHA_BOCA_CIMA_1
+	VOLTA_MOV_CIMA:
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0 # copia o file descriptor para t0 (pois o ecall 63 muda a0)
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0 # devolve o FD
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	addi a1,a1,-8
+	jal CALC_POS # retorna a posicao do endereco, em a2
+	
+	jal SPAWN2
+	addi s5,s5,-8
+	
+	j MAIN_LOOP
+
+ABRE_BOCA_CIMA_1:
+	la a0,PACMAN_UP
+	li s7,1
+	j VOLTA_MOV_CIMA
+ABRE_BOCA_CIMA_2:
+	la a0,PACMAN_UP_OPEN
+	li s7,3
+	j VOLTA_MOV_CIMA
+
+FECHA_BOCA_CIMA_1:
+	la a0,PACMAN_UP
+	li s7,2
+	j VOLTA_MOV_CIMA
+FECHA_BOCA_CIMA_2:
+	la a0,PACMAN_UP_CLOSED
+	li s7,0
+	j VOLTA_MOV_CIMA
+
+# Movimenta o pac man para cima
+# Parametros:
+# a1 = posicao x atual
+# a2 = posicao y atual
+# A implementar: mover qualquer objeto
+MOV_BAIXO:
+	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
+	#sw ra,0(t0)
+	
+	li t0,219 # limite de colisao do ponto de referencia
+	bge s5,t0,STOP_PACMAN
+	jal BLACK_BLOCK # Muda o local atual para preto
+	
+	#la t0,tempObj
+	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
+	
+	# Realiza o movimento para a direita
+	li t0,1
+	li t1,2
+	li t2,3
+	beq s7,zero,ABRE_BOCA_BAIXO_1
+	beq s7,t0,ABRE_BOCA_BAIXO_2
+	beq s7,t1,FECHA_BOCA_BAIXO_2
+	beq s7,t2,FECHA_BOCA_BAIXO_1
+	VOLTA_MOV_BAIXO:
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0 # copia o file descriptor para t0 (pois o ecall 63 muda a0)
+	la a1,SPRITE_SP
+	li a2,225
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0 # devolve o FD
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	addi a1,a1,+8
+	jal CALC_POS # retorna a posicao do endereco, em a2
+	
+	jal SPAWN2
+	addi s5,s5,+8
+	
+	j MAIN_LOOP
+
+ABRE_BOCA_BAIXO_1:
+	la a0,PACMAN_DOWN
+	li s7,1
+	j VOLTA_MOV_BAIXO
+ABRE_BOCA_BAIXO_2:
+	la a0,PACMAN_DOWN_OPEN
+	li s7,3
+	j VOLTA_MOV_BAIXO
+
+FECHA_BOCA_BAIXO_1:
+	la a0,PACMAN_DOWN
+	li s7,2
+	j VOLTA_MOV_BAIXO
+FECHA_BOCA_BAIXO_2:
+	la a0,PACMAN_DOWN_CLOSED
+	li s7,0
+	j VOLTA_MOV_BAIXO
+	
 # Para o movimento do pac man
 STOP_PACMAN:
 	li s6,0
@@ -508,7 +654,7 @@ BLACK_BLOCK: # Deixa o local preto
 	ecall # abre o arquivo
 	
 	mv t0,a0
-	la a1,SPRITE_SP1
+	la a1,SPRITE_SP
 	li a2,225
 	li a7,63
 	ecall # carrega no sp
@@ -522,7 +668,7 @@ BLACK_BLOCK: # Deixa o local preto
 	jal CALC_POS
 	
 	la a0,BLACK
-	jal SPAWN1
+	jal SPAWN2
 	
 	lw t0,tempRet3 # Carrega o endereço original da memoria
 	jr t0,0 # Retorna para a funcao que o chamou originalmente
@@ -555,29 +701,6 @@ SPAWN2:
 			j SPAWN2_LOOP # volta para o primeiro loop, para desenhar a proxima linha
 			
 			FIM_SPAWN2:
-				jr ra,0 # retorna
-
-# Spawn auxiliar. Mesmos parametros, a unica diferenca é que usa o segundo sprite			
-SPAWN1:
-	li t0,15 # altura do objeto
-	li t1,14 # largura do objeto
-	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
-	la a2,SPRITE_SP1 # muda a2 para o vet 225
-	SPAWN1_LOOP: beqz t0,SPAWN1_LOOP2 # caso t0 seja 0, pula para a prox linha
-		lb t3,0(a2) # caso contrario, decrementa t0 e repete, até terminar os 15px horizontais da imagem.
-		sb t3,0(a1)
-		addi t0,t0,-1 # decrementa t0
-		addi a2,a2,1 # aumenta a2 (tamanho do espaço vet)
-		addi a1,a1,1 # aumenta a1 (endereco a ser desenhado)
-		j SPAWN1_LOOP
-		
- 		SPAWN1_LOOP2:beqz t1,FIM_SPAWN1 # caso esteja na ultima linha, para a execucao do loop
-			addi t1,t1,-1 # caso contrario, pula uma linha e dá o espacamento necessario até chegar na posicao necessaria
-			addi a1,a1,305
-			addi t0,t0,15
-			j SPAWN1_LOOP # volta para o primeiro loop, para desenhar a proxima linha
-			
-			FIM_SPAWN1:
 				jr ra,0 # retorna
 				
 #----------------------------------------------
