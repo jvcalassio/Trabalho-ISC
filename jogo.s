@@ -32,6 +32,8 @@ BLINKY: .string "sprites/red_1.bin" # fantasma vermelho, blinky
 BANANA: .string "sprites/banana.bin"
 
 BLACK: .string "sprites/black.bin" # tela preta, 15x15
+BLACK_THIN_VERT: .string "sprites/black_thin_vert.bin" # tela preta, 2x15
+BLACK_THIN_HORIZ: .string "sprites/black_thin_horiz.bin" # tela preta, 15x2
 SPRITE_SP: .space 225
 
 #strings do jogo
@@ -354,7 +356,7 @@ CHECK_MOV:
 	li t3,119 # W - seta pra cima
 	li t4,115 # S - seta pra baixo
 	
-	li a0,35 # Sleep, pro jogo nao correr
+	li a0,10 # Sleep, pro jogo nao correr
 	li a7,32
 	ecall
 	
@@ -377,7 +379,8 @@ MOV_ESQUERDA:
 	
 	li t0,13 # limite de colisao do ponto de referencia
 	ble s4,t0,STOP_PACMAN
-	jal BLACK_BLOCK # Muda o local atual para preto
+	li a0,1 # a0 = 1, para indicar que está indo para a esquerda na funcao black block
+	jal BLACK_BLOCK_HORIZ # Muda os 2 px pra direita para preto. Só muda 2px para nao piscar
 	
 	la t0,tempObj
 	sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
@@ -407,11 +410,11 @@ MOV_ESQUERDA:
 	
 	lw a0,tempX
 	lw a1,tempY
-	addi a0,a0,-8
+	addi a0,a0,-2
 	jal CALC_POS # retorna a posicao do endereco, em a2
 	
 	jal SPAWN2
-	addi s4,s4,-8
+	addi s4,s4,-2
 	
 	j MAIN_LOOP
 
@@ -444,7 +447,8 @@ MOV_DIREITA:
 	
 	li t0,196 # limite de colisao do ponto de referencia
 	bge s4,t0,STOP_PACMAN
-	jal BLACK_BLOCK # Muda o local atual para preto
+	li a0,0 # a0 = 0, para indicar que está indo para a direita na funcao black block
+	jal BLACK_BLOCK_HORIZ # Muda os 2px pra esquerda para preto. Apenas 2px para nao piscar
 	
 	#la t0,tempObj
 	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
@@ -474,11 +478,11 @@ MOV_DIREITA:
 	
 	lw a0,tempX
 	lw a1,tempY
-	addi a0,a0,+8
+	addi a0,a0,+2
 	jal CALC_POS # retorna a posicao do endereco, em a2
 	
 	jal SPAWN2
-	addi s4,s4,+8
+	addi s4,s4,+2
 	
 	j MAIN_LOOP
 
@@ -511,7 +515,8 @@ MOV_CIMA:
 	
 	li t0,13 # limite de colisao do ponto de referencia
 	bge t0,s5,STOP_PACMAN
-	jal BLACK_BLOCK # Muda o local atual para preto
+	li a0,1 # a0 = 1, para indicar que está indo para cima na funcao black block
+	jal BLACK_BLOCK_VERT # Muda o local atual para preto
 	
 	#la t0,tempObj
 	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
@@ -541,11 +546,11 @@ MOV_CIMA:
 	
 	lw a0,tempX
 	lw a1,tempY
-	addi a1,a1,-8
+	addi a1,a1,-2
 	jal CALC_POS # retorna a posicao do endereco, em a2
 	
 	jal SPAWN2
-	addi s5,s5,-8
+	addi s5,s5,-2
 	
 	j MAIN_LOOP
 
@@ -567,7 +572,7 @@ FECHA_BOCA_CIMA_2:
 	li s7,0
 	j VOLTA_MOV_CIMA
 
-# Movimenta o pac man para cima
+# Movimenta o pac man para baixo
 # Parametros:
 # a1 = posicao x atual
 # a2 = posicao y atual
@@ -578,7 +583,8 @@ MOV_BAIXO:
 	
 	li t0,219 # limite de colisao do ponto de referencia
 	bge s5,t0,STOP_PACMAN
-	jal BLACK_BLOCK # Muda o local atual para preto
+	li a0,0 # a0 = 0, para indicar que está indo para baixo na funcao black block
+	jal BLACK_BLOCK_VERT # Muda o local atual para preto
 	
 	#la t0,tempObj
 	#sw a0,0(t0) # Salva o objeto (a ser movimentado) na memoria
@@ -608,11 +614,11 @@ MOV_BAIXO:
 	
 	lw a0,tempX
 	lw a1,tempY
-	addi a1,a1,+8
+	addi a1,a1,+2
 	jal CALC_POS # retorna a posicao do endereco, em a2
 	
 	jal SPAWN2
-	addi s5,s5,+8
+	addi s5,s5,+2
 	
 	j MAIN_LOOP
 
@@ -639,23 +645,29 @@ STOP_PACMAN:
 	li s6,0
 	j CHECK_MOV
 	
-BLACK_BLOCK: # Deixa o local preto
+# Torna um bloco 2x15 preto
+# Usado para apagar um obj na posicao atual, sem piscar
+# a0 = direita (0) / esquerda (1)
+# a1 = x
+# a2 = y
+BLACK_BLOCK_HORIZ:
 	la t0,tempRet3 # Salva o endereco da funcao que o chamou originalmente
 	sw ra,0(t0)
-	
+
 	la t1,tempX
 	sw a1,0(t1) # salva o x recebido na memoria
 	la t1,tempY
 	sw a2,0(t1) # salva o y recebido na memoria
 	
-	la a0,BLACK
+	mv t1,a0 # salva o a0 recebido na chamada da funcao, para uso futuro
+	la a0,BLACK_THIN_VERT
 	li a1,0
 	li a7,1024
 	ecall # abre o arquivo
 	
 	mv t0,a0
 	la a1,SPRITE_SP
-	li a2,225
+	li a2,30
 	li a7,63
 	ecall # carrega no sp
 	
@@ -665,25 +677,79 @@ BLACK_BLOCK: # Deixa o local preto
 	
 	lw a0,tempX
 	lw a1,tempY
+	li t2,1
+	beq t1,t2,SET_LEFT_2PX # verifica se é para esquerda ou direita. se for para esquerda, add 13px a a0
+	CONT_BBH: # label para continuar a execucao da funcao
 	jal CALC_POS
 	
-	la a0,BLACK
-	jal SPAWN2
+	la a0,BLACK_THIN_VERT
+	jal SPAWN1
+	
+	lw t0,tempRet3 # Carrega o endereço original da memoria
+	jr t0,0 # Retorna para a funcao que o chamou originalmente
+
+SET_LEFT_2PX:
+	addi a0,a0,13
+	j CONT_BBH
+	
+# Torna um bloco 15x2 preto
+# Usado para apagar um obj na posicao atual, sem piscar
+# a0 = cima (1) / baixo(0)
+# a1 = x
+# a2 = y
+BLACK_BLOCK_VERT:
+	la t0,tempRet3 # Salva o endereco da funcao que o chamou originalmente
+	sw ra,0(t0)
+
+	la t1,tempX
+	sw a1,0(t1) # salva o x recebido na memoria
+	la t1,tempY
+	sw a2,0(t1) # salva o y recebido na memoria
+	
+	mv t1,a0 # salva o a0 recebido na chamada da funcao, para uso futuro
+	la a0,BLACK_THIN_HORIZ
+	li a1,0
+	li a7,1024
+	ecall # abre o arquivo
+	
+	mv t0,a0
+	la a1,SPRITE_SP
+	li a2,30
+	li a7,63
+	ecall # carrega no sp
+	
+	mv a0,t0
+	li a7,57
+	ecall # fecha o arquivo
+	
+	lw a0,tempX
+	lw a1,tempY
+	li t2,1
+	beq t1,t2,SET_UP_13PX # verifica se é pra cima ou para baixo. se for para cima, add 13px a a1
+	CONT_BBV: # label para continuar a execucao da funcao
+	jal CALC_POS
+	
+	la a0,BLACK_THIN_HORIZ
+	jal SPAWN0 # chama o spawn 15x2
 	
 	lw t0,tempRet3 # Carrega o endereço original da memoria
 	jr t0,0 # Retorna para a funcao que o chamou originalmente
 	
+SET_UP_13PX:
+	addi a1,a1,13
+	j CONT_BBV
+	
 #--------------------------------------------------------------
 # Gera objetos no mapa
-# Funciona com qualquer objeto
+# Funciona com qualquer objeto 15x15
 # Usar CALC_POS para gerar qual a posicao a ser desenhada
 # Carregue a imagem com o open em a0, e de o read em SPRITE_SP
 # a0 = Imagem carregada pelo Open
 # a2 = resultado do CALC_POS
 #--------------------------------------------------------------
 SPAWN2:
-	li t0,15 # altura do objeto
-	li t1,14 # largura do objeto
+	li t0,15 # largura do objeto
+	li t1,14 # altura do objeto - 1
 	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
 	la a2,SPRITE_SP # muda a2 para o vet 225
 	SPAWN2_LOOP: beqz t0,SPAWN2_LOOP2 # caso t0 seja 0, pula para a prox linha
@@ -701,6 +767,52 @@ SPAWN2:
 			j SPAWN2_LOOP # volta para o primeiro loop, para desenhar a proxima linha
 			
 			FIM_SPAWN2:
+				jr ra,0 # retorna
+
+# Spawn auxiliar. Para o bloco preto 2x15
+SPAWN1:
+	li t0,2 # largura do objeto
+	li t1,14 # altura do objeto - 1
+	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
+	la a2,SPRITE_SP # muda a2 para o vet 225
+	SPAWN1_LOOP: beqz t0,SPAWN1_LOOP2 # caso t0 seja 0, pula para a prox linha
+		lb t3,0(a2) # caso contrario, decrementa t0 e repete, até terminar os 15px horizontais da imagem.
+		sb t3,0(a1)
+		addi t0,t0,-1 # decrementa t0
+		addi a2,a2,1 # aumenta a2 (tamanho do espaço vet)
+		addi a1,a1,1 # aumenta a1 (endereco a ser desenhado)
+		j SPAWN1_LOOP
+		
+ 		SPAWN1_LOOP2:beqz t1,FIM_SPAWN1 # caso esteja na ultima linha, para a execucao do loop
+			addi t1,t1,-1 # caso contrario, pula uma linha e dá o espacamento necessario até chegar na posicao necessaria
+			addi a1,a1,318
+			addi t0,t0,2
+			j SPAWN1_LOOP # volta para o primeiro loop, para desenhar a proxima linha
+			
+			FIM_SPAWN1:
+				jr ra,0 # retorna
+				
+# Spawn auxiliar. Para o bloco preto 15x2
+SPAWN0:
+	li t0,15 # largura do objeto
+	li t1,1 # altura do objeto - 1
+	mv a1,a2 # define a posicao inicial a ser desenhado o boneco (em a2, gerado pela funcao CALC_POS)
+	la a2,SPRITE_SP # muda a2 para o vet 225
+	SPAWN0_LOOP: beqz t0,SPAWN0_LOOP2 # caso t0 seja 0, pula para a prox linha
+		lb t3,0(a2) # caso contrario, decrementa t0 e repete, até terminar os 15px horizontais da imagem.
+		sb t3,0(a1)
+		addi t0,t0,-1 # decrementa t0
+		addi a2,a2,1 # aumenta a2 (tamanho do espaço vet)
+		addi a1,a1,1 # aumenta a1 (endereco a ser desenhado)
+		j SPAWN0_LOOP
+		
+ 		SPAWN0_LOOP2:beqz t1,FIM_SPAWN0 # caso esteja na ultima linha, para a execucao do loop
+			addi t1,t1,-1 # caso contrario, pula uma linha e dá o espacamento necessario até chegar na posicao necessaria
+			addi a1,a1,305
+			addi t0,t0,15
+			j SPAWN0_LOOP # volta para o primeiro loop, para desenhar a proxima linha
+			
+			FIM_SPAWN0:
 				jr ra,0 # retorna
 				
 #----------------------------------------------
@@ -722,8 +834,6 @@ CALC_POS: # calcula as posicoes, de px para o endereco desejado
 	# 0xff000000 é sempre o endereco base
 	li t0,320
 	li t1,240
-	addi a0,a0,-1 # a0--; porque a faixa do x é de 0 a 319
-	addi a1,a1,-1 # a1--; porque a faixa do y é de 0 a 239
 	mul t0,t0,a1 # a3 = y * 320
 	add a2,t0,a0 # a3 = (y * 320) + x
 	li t0,0xff000000
