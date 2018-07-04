@@ -10,7 +10,7 @@
 
 .data
 # recursos externos
-FUNDO: .string "sprites/map_cp.bin"
+FUNDO: .string "sprites/map_cp_perso.bin"
 
 PACMAN_RIGHT: .string "sprites/b_med_open_right.bin" #pac man base, com a boca meio aberta
 PACMAN_RIGHT_OPEN: .string "sprites/b_full_open_right.bin"
@@ -31,7 +31,6 @@ SUE: .string "sprites/orang_1.bin" # fantasma laranja, sue
 BLINKY: .string "sprites/red_1.bin" # fantasma vermelho, blinky
 BANANA: .string "sprites/banana.bin"
 
-BLACK: .string "sprites/black.bin" # tela preta, 15x15
 BLACK_THIN_VERT: .string "sprites/black_thin_vert.bin" # tela preta, 2x15
 BLACK_THIN_HORIZ: .string "sprites/black_thin_horiz.bin" # tela preta, 15x2
 SPRITE_SP: .space 225
@@ -63,11 +62,11 @@ tempRet3: .word 0
 # Seta os valores iniciais. Utilizar caso dê game over
 #----------------------------------------------
 RESET:
-	add s6, zero,zero # seta s6 = 0 (tecla pressionada)
-	addi s0, zero, 1 # seta s0 = 1 (mapa atual, no caso, o primeiro mapa)
-	addi s1, zero, 3 # seta s1 = 3 (qtd de vidas)
-	addi s4, zero, 103 # seta s4 = 103 (posicao x inicial do pac man)
-	addi s5, zero, 175 # seta s5 = 175 (posicao y inicial do pac man)
+	li s6,0 # seta s6 = 0 (tecla pressionada)
+	li s0,1 # seta s0 = 1 (mapa atual, no caso, o primeiro mapa)
+	li s1,3 # seta s1 = 3 (qtd de vidas)
+	li s4,103 # seta s4 = 103 (posicao x inicial do pac man)
+	li s5,175 # seta s5 = 175 (posicao y inicial do pac man)
 #----------------------------------------------
 # Menu principal do jogo
 # Qualquer tecla inicia
@@ -349,14 +348,13 @@ MAIN_LOOP:
 CHECK_MOV:
 	#la t0,tempRet1 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
-	
 	jal TECLADO
 	li t1,97 # A - seta pra esquerda
 	li t2,100 # D - seta pra direita
 	li t3,119 # W - seta pra cima
 	li t4,115 # S - seta pra baixo
 	
-	li a0,10 # Sleep, pro jogo nao correr
+	li a0,50 # Sleep, pro jogo nao correr
 	li a7,32
 	ecall
 	
@@ -377,8 +375,42 @@ MOV_ESQUERDA:
 	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
 	
-	li t0,13 # limite de colisao do ponto de referencia
+	li t0,8 # limite de colisao do ponto de referencia
 	ble s4,t0,STOP_PACMAN
+	
+	# salva a1 e a2, para usar na frente
+	mv t3,a1
+	mv t4,a2
+	
+	# checa colisao do pac man no mov esquerda, na ponta
+	addi a0,a1,-1
+	mv a1,a2
+	jal CALC_POS
+	lb a0,0(a2)
+	li t0,0xfffffff7
+	beq a0,t0,STOP_PACMAN
+	
+	# checa colisao do pac man no mov esquerda, no meio
+	#addi a0,a1,-1
+	#addi a1,a2,8
+	#jal CALC_POS
+	#lb a0,0(a2)
+	#li t0,0xfffffff7
+	#beq a0,t0,STOP_PACMAN
+	
+	# checa colisao do pac man no mov esquerda, na fim
+	#mv a0,a1
+	#addi a0,a0,-1
+	#addi a1,a2,15
+	#jal CALC_POS
+	#lb a0,0(a2)
+	#li t0,0xfffffff7
+	#beq a0,t0,STOP_PACMAN
+	
+	# caso passe, devolve os valores de a1 e a2
+	mv a1,t3
+	mv a2,t4
+	
 	li a0,1 # a0 = 1, para indicar que está indo para a esquerda na funcao black block
 	jal BLACK_BLOCK_HORIZ # Muda os 2 px pra direita para preto. Só muda 2px para nao piscar
 	
@@ -447,6 +479,39 @@ MOV_DIREITA:
 	
 	li t0,196 # limite de colisao do ponto de referencia
 	bge s4,t0,STOP_PACMAN
+	
+	# salva a1 e a2, para usar na frente
+	mv t3,a1
+	mv t4,a2
+	
+	# faz ele parar o mov para direita, caso haja uma parede no começo do pac man
+	addi a0,a1,15
+	mv a1,a2
+	jal CALC_POS
+	lb a0,0(a2)
+	li t0,0xfffffff7
+	beq a0,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para direita, caso haja uma parede no meio do pac man
+	#addi a0,a1,15
+	#addi a1,a2,8
+	#jal CALC_POS
+	#lb a0,0(a2)
+	#li t0,0xfffffff7
+	#beq a0,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para direita, caso haja uma parede no fim do pac man
+	#addi a0,a1,15
+	#addi a1,a2,15
+	#jal CALC_POS
+	#lb a0,0(a2)
+	#li t0,0xfffffff7
+	#beq a0,t0,STOP_PACMAN
+	
+	# caso passe, devolve os valores de a1 e a2 para utilizar
+	mv a1,t3
+	mv a2,t4
+	
 	li a0,0 # a0 = 0, para indicar que está indo para a direita na funcao black block
 	jal BLACK_BLOCK_HORIZ # Muda os 2px pra esquerda para preto. Apenas 2px para nao piscar
 	
@@ -512,9 +577,42 @@ FECHA_BOCA_DIREITA_2:
 MOV_CIMA:
 	#la t0,tempRet2 # Salva o endereco da funcao que o chamou originalmente
 	#sw ra,0(t0)
-	
-	li t0,13 # limite de colisao do ponto de referencia
+
+	li t0,8 # limite de colisao do ponto de referencia
 	bge t0,s5,STOP_PACMAN
+	
+	# salva a1 e a2 em t3 e t4 para usar na frente
+	mv t3,a1
+	mv t4,a2
+	
+	# faz ele parar o mov para cima, caso haja uma parede no começo do pac man
+	mv a0,a1
+	addi a1,a2,-1
+	jal CALC_POS
+	lb t1,0(a2)
+	li t0,0xfffffff7
+	beq t1,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para cima, caso haja uma parede no meio do pac man
+	addi a0,t3,8
+	addi a1,t4,-1
+	jal CALC_POS
+	lb t1,0(a2)
+	li t0,0xfffffff7
+	beq t1,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para cima, caso haja uma parede no final do pac man
+	addi a0,t3,15
+	addi a1,t4,-1
+	jal CALC_POS
+	lb t1,0(a2)
+	li t0,0xfffffff7
+	beq t1,t0,STOP_PACMAN
+	
+	# se passar, devolve os valores de a1 e a2 
+	mv a1,t3
+	mv a2,t4
+	
 	li a0,1 # a0 = 1, para indicar que está indo para cima na funcao black block
 	jal BLACK_BLOCK_VERT # Muda o local atual para preto
 	
@@ -583,6 +681,39 @@ MOV_BAIXO:
 	
 	li t0,219 # limite de colisao do ponto de referencia
 	bge s5,t0,STOP_PACMAN
+	
+	# salva a1 e a2 em t3 e t4 para usar na frente
+	mv t3,a1
+	mv t4,a2
+	
+	# faz ele parar o mov para baixo, caso haja uma parede no começo do pac man
+	mv a0,a1
+	addi a1,a2,15
+	jal CALC_POS
+	lb a0,0(a2)
+	li t0,0xfffffff7
+	beq a0,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para baixo, caso haja uma parede no meio do pac man
+	addi a0,t3,8
+	addi a1,t4,15
+	jal CALC_POS
+	lb t1,0(a2)
+	li t0,0xfffffff7
+	beq t1,t0,STOP_PACMAN
+	
+	# faz ele parar o mov para baixo, caso haja uma parede no fim do pac man
+	addi a0,t3,15
+	addi a1,t4,15
+	jal CALC_POS
+	lb t1,0(a2)
+	li t0,0xfffffff7
+	beq t1,t0,STOP_PACMAN
+	
+	# se passar, devolve os valores de a1 e a2 e 
+	mv a1,t3
+	mv a2,t4
+	
 	li a0,0 # a0 = 0, para indicar que está indo para baixo na funcao black block
 	jal BLACK_BLOCK_VERT # Muda o local atual para preto
 	
@@ -739,6 +870,7 @@ SET_UP_13PX:
 	addi a1,a1,13
 	j CONT_BBV
 	
+	
 #--------------------------------------------------------------
 # Gera objetos no mapa
 # Funciona com qualquer objeto 15x15
@@ -838,6 +970,7 @@ CALC_POS: # calcula as posicoes, de px para o endereco desejado
 	add a2,t0,a0 # a3 = (y * 320) + x
 	li t0,0xff000000
 	add a2,a2,t0 # a3 = end. base + (y*320) + x
+
 	jr ra,0
 
 #----------------------------------------------
